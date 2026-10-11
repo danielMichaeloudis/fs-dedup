@@ -1,6 +1,7 @@
 use std::time::Instant;
 
 use clap::Parser;
+use size::Size;
 
 use crate::{cli::Cli, file_cache::FileCacheMap, hash_files::HashedFilePaths};
 
@@ -12,7 +13,15 @@ mod hash_files;
 
 #[derive(Debug, Default)]
 pub struct Options {
-    pub show_hidden: bool,
+    pub ignore_hidden: bool,
+}
+
+impl From<&Cli> for Options {
+    fn from(value: &Cli) -> Self {
+        Self {
+            ignore_hidden: !value.show_hidden,
+        }
+    }
 }
 
 fn main() -> Result<(), anyhow::Error> {
@@ -25,7 +34,7 @@ fn main() -> Result<(), anyhow::Error> {
         anyhow::bail!("Path is not a directory")
     }
 
-    let options = Options::default();
+    let options = Options::from(&args);
 
     let mut cache = if !args.no_cache {
         Some(FileCacheMap::get())
@@ -44,11 +53,22 @@ fn main() -> Result<(), anyhow::Error> {
         let _ = cache.save();
     }
 
-    println!(
-        "Took {:?} to read {}GB",
-        end - start,
-        size / (1024u64.pow(3))
-    );
+    let savable = files.values().fold(Size::from_bytes(0), |acc, item| {
+        let mut names = item
+            .paths()
+            .iter()
+            .filter_map(|item| item.file_name())
+            .collect::<Vec<_>>();
+        names.dedup();
+        let dups = item.paths().len();
+        let savable = item.size() * (dups - 1);
+        println!("Found {dups} copies of files {names:?} at {savable}");
+        acc + savable
+    });
+
+    println!("Took {:?} to read {}", end - start, size);
+
+    println!("Removing duplicates will save {savable}");
 
     Ok(())
 }

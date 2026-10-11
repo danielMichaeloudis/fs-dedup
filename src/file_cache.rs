@@ -10,11 +10,7 @@ use blake3::Hash;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    consts::{
-        env::{CACHE_DIR, CONFIG_DIR},
-        fs::CACHE_FILE,
-        APP_NAME,
-    },
+    consts::{env::CACHE_DIR, fs::CACHE_FILE, APP_NAME},
     hash_files::file_hash,
 };
 
